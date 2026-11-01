@@ -42,7 +42,7 @@ fi
 # For authenticated testing, grant the tester roles/run.invoker on the service separately.
 gcloud run deploy "$SERVICE" \
   --project "$PROJECT" --region "$REGION" --platform managed \
-  --image "$IMAGE" --tag "$TAG" "${TRAFFIC_ARG[@]}" \
+  --image "$IMAGE" --tag "$CANDIDATE_TAG" "${TRAFFIC_ARG[@]}" \
   --service-account "$RUNTIME_SA" \
   --ingress all --no-allow-unauthenticated \
   --cpu 1 --memory 1Gi --min-instances 0 --max-instances 1 \
@@ -58,5 +58,5 @@ if [[ -z "$REVISION" ]]; then
   exit 4
 fi
 printf '%s\n' "$REVISION" >/workspace/deployed-revision.txt
-printf '%s\n' "$TAG" >/workspace/deployed-tag.txt
-printf 'Candidate revision: %s\nUnique testing tag: %s\n' "$REVISION" "$TAG"
+printf '%s\n' "$CANDIDATE_TAG" >/workspace/deployed-tag.txt
+printf 'Candidate revision: %s\nUnique testing tag: %s\n' "$REVISION" "$CANDIDATE_TAG"
