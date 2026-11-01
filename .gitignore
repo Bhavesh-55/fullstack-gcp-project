@@ -1,0 +1,18 @@
+# Java/Gradle
+.gradle/
+build/
+out/
+*.class
+# IDE
+.idea/
+*.iml
+.vscode/
+# Local/private configurations
+.env
+.env.*
+!.env.example
+# Ignore local gradle-bootstrap download
+.gradle-bootstrap/
+# System
+.DS_Store
+Thumbs.db

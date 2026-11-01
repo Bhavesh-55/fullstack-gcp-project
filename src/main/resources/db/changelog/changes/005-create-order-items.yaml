@@ -1,0 +1,64 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-create-order_items
+      author: inventory-team
+      changes:
+        - createTable:
+            tableName: order_items
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: order_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: product_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: quantity
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: unit_price
+                  type: DECIMAL(12,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: line_total
+                  type: DECIMAL(14,2)
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            constraintName: fk_items_order
+            baseTableName: order_items
+            baseColumnNames: order_id
+            referencedTableName: purchase_orders
+            referencedColumnNames: id
+        - addForeignKeyConstraint:
+            constraintName: fk_items_product
+            baseTableName: order_items
+            baseColumnNames: product_id
+            referencedTableName: products
+            referencedColumnNames: id
+        - createIndex:
+            tableName: order_items
+            indexName: idx_items_order
+            columns:
+              - column:
+                  name: order_id
+        - createIndex:
+            tableName: order_items
+            indexName: idx_items_product
+            columns:
+              - column:
+                  name: product_id

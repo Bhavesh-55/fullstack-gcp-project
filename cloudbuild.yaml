@@ -1,0 +1,73 @@
+# Full CI/CD: trigger on pushes to main AFTER GitHub PR approval and merge.
+# Backend repository only. Private GCP infrastructure is NOT required for this learning version.
+# Prerequisites: remote PostgreSQL, Artifact Registry repo, IAM, Secret Manager, GitHub connection.
+steps:
+  - id: '01 - Gradle Unit Tests'
+    name: 'gradle:8.14-jdk17'
+    entrypoint: bash
+    args: ['-ceu', 'gradle --no-daemon clean test']
+
+  - id: '02 - Build Container Image'
+    name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_SERVICE}:$BUILD_ID'
+      - '.'
+
+  - id: '03 - Push to Artifact Registry'
+    name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_SERVICE}:$BUILD_ID'
+
+  - id: '04 - Deploy Candidate (0% on Existing Service)'
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:stable'
+    entrypoint: bash
+    args:
+      - 'scripts/cloudrun/deploy-candidate.sh'
+      - '$PROJECT_ID'
+      - '${_REGION}'
+      - '${_SERVICE}'
+      - '${_DB_HOST}'
+      - '${_DB_PORT}'
+      - '${_DB_NAME}'
+      - '${_DB_USER}'
+      - '${_DB_SECRET}'
+      - '${_DB_SECRET_VERSION}'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_SERVICE}:$BUILD_ID'
+      - '$BUILD_ID'
+
+  - id: '05 - Verify Revision Readiness'
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:stable'
+    entrypoint: bash
+    args:
+      - 'scripts/cloudrun/verify-candidate.sh'
+      - '$PROJECT_ID'
+      - '${_REGION}'
+      - '${_SERVICE}'
+
+  - id: '06 - Promote Candidate to 100%'
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:stable'
+    entrypoint: bash
+    args:
+      - 'scripts/cloudrun/promote-candidate.sh'
+      - '$PROJECT_ID'
+      - '${_REGION}'
+      - '${_SERVICE}'
+
+substitutions:
+  _REGION: 'asia-south1'                 # Confirm selected region in your project.
+  _AR_REPO: 'inventory-images'
+  _SERVICE: 'inventory-backend'
+  _DB_HOST: 'REPLACE_WITH_REMOTE_DB_HOST' # Never use localhost for Cloud Run.
+  _DB_PORT: '5432'
+  _DB_NAME: 'inventory_db'
+  _DB_USER: 'inventory_app'
+  _DB_SECRET: 'inventory-db-password'
+  _DB_SECRET_VERSION: '1'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: '1200s'

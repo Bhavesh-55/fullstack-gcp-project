@@ -1,0 +1,4 @@
+# Deployed by the Cloud Run phase. All database values are injected via env vars/secrets.
+logging:
+  level:
+    com.example.inventory: INFO

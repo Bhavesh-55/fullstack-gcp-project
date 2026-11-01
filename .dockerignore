@@ -1,0 +1,13 @@
+.git
+.github
+.gradle
+.gradle-bootstrap
+build
+.idea
+.vscode
+*.iml
+.env
+.env.*
+README.md
+postman
+specs

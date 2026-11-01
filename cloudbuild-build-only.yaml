@@ -1,0 +1,20 @@
+# Safe first experiment: CI test + container build + Artifact Registry push.
+# Does NOT deploy to Cloud Run, so you can start learning before choosing a cloud DB.
+steps:
+  - id: '01 - Gradle Unit Tests'
+    name: 'gradle:8.14-jdk17'
+    entrypoint: bash
+    args: ['-ceu', 'gradle --no-daemon clean test']
+  - id: '02 - Docker Build'
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_SERVICE}:$BUILD_ID', '.']
+  - id: '03 - Docker Push'
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_SERVICE}:$BUILD_ID']
+substitutions:
+  _REGION: 'asia-south1'
+  _AR_REPO: 'inventory-images'
+  _SERVICE: 'inventory-backend'
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: '1200s'
