@@ -16,7 +16,17 @@ if [[ "$INSTANCE_CONNECTION_NAME" != "${EXPECTED_PREFIX}"* ]]; then
 fi
 
 RUNTIME_SA="inventory-runtime@${PROJECT}.iam.gserviceaccount.com"
-TAG="candidate-${BUILD_ID}"  # Unique per deployment. Never reuse an active revision tag.
+#TAG="candidate-${BUILD_ID}"  # Unique per deployment. Never reuse an active revision tag.
+
+# Use the first 8 characters of the Cloud Build ID
+SHORT_BUILD_ID="${BUILD_ID:0:8}"
+
+# Generate a shorter revision tag
+CANDIDATE_TAG="c-${SHORT_BUILD_ID}"
+
+echo "Deploying candidate with tag: ${CANDIDATE_TAG}"
+
+
 
 # Cloud Run startup depends on DB availability; Liquibase runs when the app starts.
 # First deployment has no blue revision; it must receive traffic after it becomes ready.
