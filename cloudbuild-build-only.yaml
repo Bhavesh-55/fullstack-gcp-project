@@ -1,4 +1,5 @@
 # Safe first experiment: CI test + container build + Artifact Registry push.
+#comment added here for testing purpose
 # Does NOT deploy to Cloud Run, so you can start learning before choosing a cloud DB.
 steps:
   - id: '01 - Gradle Unit Tests'
