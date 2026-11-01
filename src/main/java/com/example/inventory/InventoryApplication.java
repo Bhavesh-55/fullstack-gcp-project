@@ -9,3 +9,5 @@ public class InventoryApplication {
         SpringApplication.run(InventoryApplication.class, args);
     }
 }
+
+//GitHub PR approval workflow verification.
