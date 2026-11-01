@@ -1,4 +1,36 @@
-# Deployed by the Cloud Run phase. All database values are injected via env vars/secrets.
+
+spring:
+  config:
+    activate:
+      on-profile: cloud
+
+  datasource:
+    url: jdbc:postgresql:///inventory_db
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USER:inventory_app}
+    password: ${DB_PASSWORD}
+
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 0
+      connection-timeout: 30000
+      data-source-properties:
+        socketFactory: com.google.cloud.sql.postgres.SocketFactory
+        cloudSqlInstance: ${INSTANCE_CONNECTION_NAME}
+        cloudSqlRefreshStrategy: lazy
+        ipTypes: PUBLIC
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
 logging:
   level:
     com.example.inventory: INFO
+    com.zaxxer.hikari: INFO
+    liquibase: INFO
