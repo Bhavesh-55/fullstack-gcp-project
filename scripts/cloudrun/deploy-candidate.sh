@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-if [[ $# -ne 11 ]]; then
-  echo 'Usage: deploy-candidate.sh PROJECT REGION SERVICE DB_HOST DB_PORT DB_NAME DB_USER DB_SECRET SECRET_VERSION IMAGE BUILD_ID' >&2
+if [[ $# -ne 10 ]]; then
+  echo 'Usage: deploy-candidate.sh PROJECT REGION SERVICE INSTANCE_CONNECTION_NAME DB_NAME DB_USER DB_SECRET SECRET_VERSION IMAGE BUILD_ID' >&2
   exit 2
 fi
-PROJECT="$1"; REGION="$2"; SERVICE="$3"; DB_HOST="$4"; DB_PORT="$5"
-DB_NAME="$6"; DB_USER="$7"; DB_SECRET="$8"; SECRET_VERSION="$9"
-IMAGE="${10}"; BUILD_ID="${11}"
+PROJECT="$1"; REGION="$2"; SERVICE="$3"; INSTANCE_CONNECTION_NAME="$4"
+DB_NAME="$5"; DB_USER="$6"; DB_SECRET="$7"; SECRET_VERSION="$8"
+IMAGE="${9}"; BUILD_ID="${10}"
 
-if [[ -z "$DB_HOST" || "$DB_HOST" == REPLACE_* || "$DB_HOST" == localhost || "$DB_HOST" == 127.0.0.1 ]]; then
-  echo 'ERROR: Configure _DB_HOST with a PostgreSQL host reachable from Cloud Run before enabling deployment.' >&2
+EXPECTED_PREFIX="${PROJECT}:${REGION}:"
+if [[ "$INSTANCE_CONNECTION_NAME" != "${EXPECTED_PREFIX}"* ]]; then
+  echo 'ERROR: Cloud SQL instance connection name does not match project/region' >&2
   exit 3
 fi
 
@@ -34,11 +35,11 @@ gcloud run deploy "$SERVICE" \
   --image "$IMAGE" --tag "$TAG" "${TRAFFIC_ARG[@]}" \
   --service-account "$RUNTIME_SA" \
   --ingress all --no-allow-unauthenticated \
-  --cpu 1 --memory 1Gi --min-instances 0 --max-instances 2 \
+  --cpu 1 --memory 1Gi --min-instances 0 --max-instances 1 \
   --concurrency 20 --timeout 300 --port 8080 \
-  --update-env-vars "SPRING_PROFILES_ACTIVE=cloud,DB_HOST=${DB_HOST},DB_PORT=${DB_PORT},DB_NAME=${DB_NAME},DB_USER=${DB_USER}" \
+  --update-env-vars "SPRING_PROFILES_ACTIVE=cloud,INSTANCE_CONNECTION_NAME=${INSTANCE_CONNECTION_NAME},DB_NAME=${DB_NAME},DB_USER=${DB_USER}" \
   --update-secrets "DB_PASSWORD=${DB_SECRET}:${SECRET_VERSION}" \
-  --startup-probe 'httpGet.path=/actuator/health/readiness,httpGet.port=8080,periodSeconds=10,timeoutSeconds=5,failureThreshold=24' \
+  --startup-probe 'httpGet.path=/actuator/health,httpGet.port=8080,periodSeconds=10,timeoutSeconds=5,failureThreshold=24' \
   --quiet
 
 REVISION="$(gcloud run services describe "$SERVICE" --project "$PROJECT" --region "$REGION" --format='value(status.latestCreatedRevisionName)')"
