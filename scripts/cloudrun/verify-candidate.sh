@@ -1,27 +1,47 @@
+
 #!/usr/bin/env bash
 set -Eeuo pipefail
-PROJECT="${1:?PROJECT required}"
-REGION="${2:?REGION required}"
-SERVICE="${3:?SERVICE required}"
-REVISION="$(cat /workspace/deployed-revision.txt)"
 
-# The status of the particular new revision, not the service's previous active revision.
-# This checks Cloud Run platform readiness, not a complete API integration smoke test.
-for attempt in $(seq 1 18); do
-  STATUS="$(gcloud run revisions describe "$REVISION" \
-    --project "$PROJECT" --region "$REGION" \
-    --format='json(status.conditions)' |
-    python3 -c 'import json,sys; d=json.load(sys.stdin); conditions=d.get("status",{}).get("conditions",[]); print(next((str(c.get("status","")).lower() for c in conditions if c.get("type")=="Ready"),"unknown"))')"
-  echo "Revision $REVISION readiness attempt $attempt: $STATUS"
-  if [[ "$STATUS" == true ]]; then
-    echo 'Revision is Ready; platform readiness gate passed.'
+if [[ $# -ne 3 ]]; then
+  echo "Usage: verify-candidate.sh PROJECT REGION SERVICE" >&2
+  exit 2
+fi
+
+PROJECT="$1"
+REGION="$2"
+SERVICE="$3"
+
+REVISION_FILE="/workspace/deployed-revision.txt"
+TAG_FILE="/workspace/deployed-tag.txt"
+
+if [[ ! -s "$REVISION_FILE" || ! -s "$TAG_FILE" ]]; then
+  echo "ERROR: Deployment metadata files are missing." >&2
+  exit 3
+fi
+
+REVISION="$(cat "$REVISION_FILE")"
+TAG="$(cat "$TAG_FILE")"
+
+echo "Verifying candidate revision: $REVISION"
+echo "Candidate tag: $TAG"
+
+# Retry until the revision is ready.
+for attempt in $(seq 1 20); do
+
+  READY_STATUS="$(gcloud run revisions describe "$REVISION" \
+    --project="$PROJECT" \
+    --region="$REGION" \
+    --format="value(status.conditions[0].status)")"
+
+  echo "Attempt $attempt: revision status = $READY_STATUS"
+
+  if [[ "$READY_STATUS" == "True" ]]; then
+    echo "Candidate revision is ready."
     exit 0
   fi
-  if [[ "$STATUS" == false ]]; then
-    echo 'Revision is not ready yet; checking again.'
-  fi
+
   sleep 10
 done
 
-echo "ERROR: New revision $REVISION did not become Ready. Existing traffic was not promoted." >&2
+echo "ERROR: Candidate revision did not become ready." >&2
 exit 1
